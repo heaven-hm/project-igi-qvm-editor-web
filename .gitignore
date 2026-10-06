@@ -9,3 +9,7 @@ test-results/
 playwright-report/
 .DS_Store
 *.log
+.vercel/
+coverage/
+*.profraw
+*.profdata
