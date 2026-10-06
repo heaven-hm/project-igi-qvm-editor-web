@@ -1,0 +1,22 @@
+{
+  "name": "project-igi-qvm-editor-online",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "toolchain": "bash tools/setup-emsdk.sh",
+    "build:wasm": "bash tools/build-wasm.sh",
+    "build:web": "npm --prefix web run build",
+    "build": "npm run build:wasm && npm run build:web",
+    "dev": "npm --prefix web run dev",
+    "test:wasm": "node --test tests/wasm.test.mjs",
+    "test:coverage:native": "node tools/e2e-native-coverage.mjs",
+    "test:coverage:web": "node tools/e2e-coverage.mjs",
+    "deploy:prepare": "node tools/prepare-vercel.mjs",
+    "test:native": "cmake -S . -B build/native -DBUILD_TESTING=ON && cmake --build build/native -j 4 && ctest --test-dir build/native --output-on-failure",
+    "test:parity": "node tools/parity.mjs",
+    "test:corpus": "node tools/corpus.mjs",
+    "test:e2e": "playwright test",
+    "test": "npm run test:native && npm run test:wasm && npm run test:parity && npm run test:e2e"
+  },
+  "devDependencies": { "@playwright/test": "^1.56.0" }
+}

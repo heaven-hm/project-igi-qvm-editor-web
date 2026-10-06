@@ -13,3 +13,6 @@ playwright-report/
 coverage/
 *.profraw
 *.profdata
+.vercel
+.env*
+*.tsbuildinfo

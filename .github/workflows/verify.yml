@@ -1,0 +1,32 @@
+name: Verify QVM editor
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci && npm --prefix web ci
+      - run: npm run toolchain
+      - run: npm run build
+      - run: npm run test:native && npm run test:wasm && npm run test:parity
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-test-results
+          path: test-results/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: static-qvm-editor
+          path: web/dist/

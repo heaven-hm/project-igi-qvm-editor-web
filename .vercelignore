@@ -1,0 +1,10 @@
+.tools/
+build*/
+node_modules/
+test-results/
+playwright-report/
+tests/
+core/
+wasm/
+docs/
+.git/
