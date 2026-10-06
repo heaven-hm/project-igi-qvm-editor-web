@@ -19,7 +19,8 @@ test.beforeEach(async ({page,browserName}) => {
 test.afterEach(async ({page,browserName},testInfo)=>{
   if(browserName==='chromium') {
     const coverage=await page.coverage.stopJSCoverage();
-    const directory=process.env.E2E_BASE_URL?'test-results/coverage-production':'test-results/coverage-local';
+    const label=process.env.E2E_RUN_LABEL||(process.env.E2E_BASE_URL?'production':'local');
+    const directory=`test-results/coverage-${label}`;
     await mkdir(directory,{recursive:true});
     const application=coverage.filter(item=>/\/src\/|\/assets\/index-/.test(item.url));
     await writeFile(join(directory,`${testInfo.project.name}-${testInfo.testId.replace(/[^a-zA-Z0-9]/g,'_')}.json`),JSON.stringify(application));
@@ -96,6 +97,8 @@ test('theme persistence, wrap, find, new document and responsive layout',async (
   await expect(page.getByRole('button',{name:'Toggle word wrap'})).toHaveAttribute('aria-pressed','true');
   await page.getByRole('button',{name:'Find in source'}).click();
   await expect(page.locator('.find-widget')).toBeVisible();
+  await page.locator('.find-widget input[aria-label="Find"]').fill('Task_New');
+  await expect(page.locator('.currentFindMatch')).toBeVisible();
   await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'New QSC file'}).click();
   await expect(page.getByRole('status')).toContainText('New QSC document');
