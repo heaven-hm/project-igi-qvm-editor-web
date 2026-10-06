@@ -203,7 +203,6 @@ QVMFile QVM_ParseMemory(const uint8_t* buf, size_t buf_size) {
             if (starts.size() > 65536) return false;
         }
         if (poolSize && buf[pool + poolSize - 1] != 0) return false;
-        if (starts.size() != tableSize / 4) return false;
         for (uint32_t p = 0; p < tableSize; p += 4)
             if (!starts.count(ReadU32(buf + table + p))) return false;
         return true;
@@ -213,13 +212,21 @@ QVMFile QVM_ParseMemory(const uint8_t* buf, size_t buf_size) {
         qvm.error = "Invalid identifier/string table bounds or unterminated pool"; return qvm;
     }
 
+    // Table indices are authoritative; pool order need not equal table order.
+    auto readTable = [&](uint32_t table, uint32_t tableSize, uint32_t pool) {
+        std::vector<std::string> entries;
+        entries.reserve(tableSize / 4);
+        for (uint32_t p = 0; p < tableSize; p += 4)
+            entries.emplace_back(reinterpret_cast<const char*>(buf + pool + ReadU32(buf + table + p)));
+        return entries;
+    };
     // Parse identifier values (ivalue)
     if (qvm.header.sz_ivalue > 0) {
         if (qvm.header.sz_ivalue > buf_size - qvm.header.of_ivalue) {
             qvm.error = "Identifier value section extends beyond file";
             return qvm;
         }
-        qvm.identifiers = SplitNullTerminated(buf + qvm.header.of_ivalue, qvm.header.sz_ivalue);
+        qvm.identifiers = readTable(qvm.header.of_itable, qvm.header.sz_itable, qvm.header.of_ivalue);
     }
 
     // Parse string values (svalue)
@@ -228,7 +235,7 @@ QVMFile QVM_ParseMemory(const uint8_t* buf, size_t buf_size) {
             qvm.error = "String value section extends beyond file";
             return qvm;
         }
-        qvm.strings = SplitNullTerminated(buf + qvm.header.of_svalue, qvm.header.sz_svalue);
+        qvm.strings = readTable(qvm.header.of_stable, qvm.header.sz_stable, qvm.header.of_svalue);
     }
 
     // Parse bytecode (code table)

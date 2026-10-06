@@ -3,6 +3,7 @@
 #include "qsc_parser.h"
 #include "qvm_compiler.h"
 #include "qvm_decompiler.h"
+#include "semantics.h"
 #include <exception>
 
 namespace igi {
@@ -40,10 +41,13 @@ Result DecompileQVM(const uint8_t* data, size_t size) {
     if (!r.ok) return r;
     try {
         r.source = QVM_DecompileToString(r.metadata);
-        auto validated = ValidateQSC(r.source);
-        if (!validated.ok) {
+        auto rebuilt = CompileQSC(r.source, r.metadata.header.ver_minor);
+        if (!rebuilt.ok) {
             r.ok = false;
-            r.error = "Decompiled source is outside supported QSC syntax: " + validated.error;
+            r.error = "Decompiled source is outside supported QSC syntax: " + rebuilt.error;
+        } else if (!QVM_Equivalent(r.metadata, rebuilt.metadata)) {
+            r.ok = false;
+            r.error = "This QVM contains control flow or operations that cannot be preserved in QSC. Conversion stopped to prevent script corruption.";
         }
     } catch (const std::exception& e) { r.ok = false; r.error = e.what(); }
     return r;

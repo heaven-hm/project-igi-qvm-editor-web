@@ -416,17 +416,11 @@ static std::vector<std::shared_ptr<ASTNode>> walk(
             statements.pop_back();
 
             if (right->type == ASTNodeType::ExpressionBinary) {
-                auto rightBin = std::static_pointer_cast<ExpressionBinaryNode>(right);
-                if (true) { // Parentheses preserve both precedence and non-associative RHS operations.
-                    right = std::make_shared<StatementParentheseNode>(right);
-                }
+                right = std::make_shared<StatementParentheseNode>(right);
             }
 
             if (left->type == ASTNodeType::ExpressionBinary) {
-                auto leftBin = std::static_pointer_cast<ExpressionBinaryNode>(left);
-                if (true) { // Preserve the original expression tree regardless of operator precedence.
-                    left = std::make_shared<StatementParentheseNode>(left);
-                }
+                left = std::make_shared<StatementParentheseNode>(left);
             }
 
             statements.push_back(std::make_shared<ExpressionBinaryNode>(opStr, left, right));
@@ -441,14 +435,30 @@ static std::vector<std::shared_ptr<ASTNode>> walk(
             }
             std::shared_ptr<ASTNode> callee = statements.back();
             statements.pop_back();
+            if (callee->type != ASTNodeType::LiteralIdentifier)
+                throw std::runtime_error("CALL callee is not an identifier");
+            const auto skip = addrToInstrIndex.find(op.address + op.size);
+            if (skip == addrToInstrIndex.end() || qvm.instructions[skip->second].type != QVMOpType::BRA)
+                throw std::runtime_error("CALL must be followed by its argument skip BRA");
+            const auto& skipOp = qvm.instructions[skip->second];
+            const int64_t afterArgs = int64_t(skipOp.address) + skipOp.size + int32_t(skipOp.operand);
+            if (int32_t(skipOp.operand) < 0)
+                throw std::runtime_error("CALL argument skip BRA must jump forward");
 
             std::vector<std::vector<std::shared_ptr<ASTNode>>> arguments;
             for (int32_t jump : op.call_targets) {
+                if (jump < int64_t(skipOp.address) + skipOp.size || jump >= afterArgs)
+                    throw std::runtime_error("CALL argument entry is outside its inline argument region");
                 uint32_t argAddr = static_cast<uint32_t>(jump);
                 auto argStmts = walk(qvm, addrToInstrIndex, argAddr, success, context);
                 if (!success) {
                     return {};
                 }
+                const auto terminator = addrToInstrIndex.find(argAddr);
+                if (argStmts.size() != 1 || terminator == addrToInstrIndex.end() || argAddr >= afterArgs ||
+                    (qvm.instructions[terminator->second].type != QVMOpType::BRK &&
+                     qvm.instructions[terminator->second].type != QVMOpType::RET))
+                    throw std::runtime_error("CALL argument must be one expression ending with BRK or RET");
                 arguments.push_back(argStmts);
             }
 
@@ -550,6 +560,13 @@ std::string QVM_DecompileToString(const QVMFile& qvm) {
     WalkContext context;
     auto tree = walk(qvm, addrToInstrIndex, address, success, context);
     if (!success) throw std::runtime_error("Decompilation failed during AST reconstruction");
+    if (address < qvm.header.sz_ctable) {
+        const auto end = addrToInstrIndex.find(address);
+        if (end == addrToInstrIndex.end() ||
+            (qvm.instructions[end->second].type != QVMOpType::BRK && qvm.instructions[end->second].type != QVMOpType::RET) ||
+            address + qvm.instructions[end->second].size != qvm.header.sz_ctable)
+            throw std::runtime_error("Unsupported trailing or unstructured QVM control flow");
+    }
     std::string text;
     for (const auto& st : tree) {
         text += st->strepr(0);
