@@ -1,15 +1,15 @@
 # Project IGI QVM Editor Web
 
-[Open the web editor](https://igi-qvm-editor.vercel.app) · [GitHub repository](https://github.com/heaven-hm/project-igi-qvm-editor-web)
-
-![Main editor workspace](docs/screenshots/editor.png)
-
 A focused browser editor, compiler and decompiler for Project IGI 1 and 2.
-Open `.qsc` source or `.qvm` bytecode, edit QSC in Monaco, choose a target game,
+Open `.qsc` source or `.qvm` bytecode, edit QSC, choose a target game,
 and download the result. No account, database, conversion server or game runtime.
 
 **Files are processed locally in your browser. They are not uploaded to a server.**
 The application executes the compiler and decompiler, never the game scripts.
+
+[Open the web editor](https://igi-qvm-editor.vercel.app) · [GitHub repository](https://github.com/heaven-hm/project-igi-qvm-editor-web)
+
+![Main editor workspace](docs/screenshots/editor.png)
 
 ## Features
 
@@ -175,12 +175,8 @@ QVM decompiled back into editable QSC:
 These screenshots use the MIT-licensed public objects fixture. Recreate them
 from a local static preview:
 
-```sh
-SCREENSHOT_BASE_URL=http://localhost:4176 node tools/capture-screenshots.mjs
-```
-
 ## Credits and license
 
 MIT, © Heaven-HM. This project builds on the Project IGI reverse-engineering work
-in Project IGI Converter and its contributors. The original archived editor credits
-Artiom for compiler/tools and Dark for UI/design. Game assets are not redistributed.
+in Project IGI Converter. The original archived editor credits
+**Artiom** for compiler/tools and game assets are not redistributed.
