@@ -97,7 +97,7 @@ test('theme persistence, wrap, find, new document and responsive layout',async (
   await expect(page.getByRole('button',{name:'Toggle word wrap'})).toHaveAttribute('aria-pressed','true');
   await page.getByRole('button',{name:'Find in source'}).click();
   await expect(page.locator('.find-widget')).toBeVisible();
-  await page.locator('.find-widget input[aria-label="Find"]').fill('Task_New');
+  await page.getByRole('textbox',{name:'Find',exact:true}).fill('Task_New');
   await expect(page.locator('.currentFindMatch')).toBeVisible();
   await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'New QSC file'}).click();
