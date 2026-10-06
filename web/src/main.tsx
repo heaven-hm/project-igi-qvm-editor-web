@@ -8,6 +8,7 @@ import App from './App';
 import './style.css';
 self.MonacoEnvironment={getWorker:()=>new EditorWorker()};
 loader.config({monaco});
+monaco.editor.defineTheme('igi-midnight',{base:'vs-dark',inherit:true,rules:[],colors:{'editor.background':'#101827','editor.foreground':'#e4edfa','editorLineNumber.foreground':'#8299b6','editorLineNumber.activeForeground':'#7ecdf3','editor.lineHighlightBackground':'#172338','editor.selectionBackground':'#284461','editor.inactiveSelectionBackground':'#20364d','editorCursor.foreground':'#7ecdf3','editorWidget.background':'#131d2d','editorWidget.border':'#2b3d57'}});
 monaco.languages.register({id:'qsc'});
 monaco.languages.setMonarchTokensProvider('qsc',{tokenizer:{root:[[/\/\/.*$/,'comment'],[/\/\*/,'comment','@comment'],[/"([^"\\]|\\.)*"/,'string'],[/\b(if|else|while|for|return|int|float|string|bool|void|true|false)\b/,'keyword'],[/\b\d+(\.\d+)?\b/,'number'],[/[{}()\[\]]/,'delimiter'],[/[a-zA-Z_]\w*/,'identifier']],comment:[[/[^/*]+/,'comment'],[/\*\//,'comment','@pop'],[/[/*]/,'comment']]}});
 monaco.languages.setLanguageConfiguration('qsc',{comments:{lineComment:'//',blockComment:['/*','*/']},brackets:[['{','}'],['(',')'],['[',']']],autoClosingPairs:[{open:'{',close:'}'},{open:'(',close:')'},{open:'[',close:']'},{open:'"',close:'"'}]});
