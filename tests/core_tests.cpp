@@ -98,6 +98,18 @@ int main() {
         for (int i = 0; i < 500; ++i) { bad = sample.binary; for (int j = 0; j < 3; ++j) bad[random() % bad.size()] = uint8_t(random()); auto r = igi::DecompileQVM(bad.data(), bad.size()); check(r.ok || !r.error.empty(), "mutations return structured result"); }
     }
     check(!igi::InspectQVM(nullptr, 1).ok, "reject null input");
+    for(uint32_t minor:{5u,7u}){
+        const uint32_t header=minor==7?64:60, pool=1024*1024, table=9*4;
+        std::vector<uint8_t> aliases(header+table+pool+1,0);
+        std::memcpy(aliases.data(),"LOOP",4);put32(aliases,4,8);put32(aliases,8,minor);
+        put32(aliases,12,header);put32(aliases,16,header);
+        put32(aliases,28,header);put32(aliases,32,header+table);put32(aliases,36,table);put32(aliases,40,pool);
+        put32(aliases,44,header+table+pool);put32(aliases,48,1);
+        std::fill(aliases.begin()+header+table,aliases.begin()+header+table+pool-1,'a');
+        check(!inspect(aliases).ok,"reject expanded string-table aliases beyond memory bound");
+        put32(aliases,36,8*4);
+        check(inspect(aliases).ok,"accept string-table aliases exactly at expanded memory bound");
+    }
     std::cout << checks << " checks, " << failures << " failures\n";
     return failures ? 1 : 0;
 }

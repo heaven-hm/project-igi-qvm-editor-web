@@ -36,7 +36,8 @@ Focused changes to the extracted source:
 The archived C# `project-igi-qvm-editor` was consulted only for workflow, naming,
 file loading, theme and text-editor behavior. Its broad model/level features are
 outside this project's scope. IGI 2 format differences are checked against local
-format definitions and the user's privately installed game corpus.
+format definitions and three authentic 8.7 samples in the user's local QVM
+research fixtures. The separate installed-game corpus contains 997 8.5 files.
 
 Game data stays outside the repository. The committed objects QSC fixture comes
 from MIT-licensed converter tests, rather than redistributing game assets.

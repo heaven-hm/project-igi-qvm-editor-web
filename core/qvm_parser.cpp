@@ -203,8 +203,14 @@ QVMFile QVM_ParseMemory(const uint8_t* buf, size_t buf_size) {
             if (starts.size() > 65536) return false;
         }
         if (poolSize && buf[pool + poolSize - 1] != 0) return false;
-        for (uint32_t p = 0; p < tableSize; p += 4)
-            if (!starts.count(ReadU32(buf + table + p))) return false;
+        size_t expandedBytes = 0;
+        for (uint32_t p = 0; p < tableSize; p += 4) {
+            const auto offset = ReadU32(buf + table + p);
+            if (!starts.count(offset)) return false;
+            const auto length = std::strlen(reinterpret_cast<const char*>(buf + pool + offset)) + 1;
+            if (length > QVM_MAX_BYTES - expandedBytes) return false;
+            expandedBytes += length;
+        }
         return true;
     };
     if (!validateTable(qvm.header.of_itable, qvm.header.sz_itable, qvm.header.of_ivalue, qvm.header.sz_ivalue) ||
