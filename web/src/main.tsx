@@ -1,0 +1,14 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import 'monaco-editor/esm/vs/editor/edcore.main';
+import {loader} from '@monaco-editor/react';
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import App from './App';
+import './style.css';
+self.MonacoEnvironment={getWorker:()=>new EditorWorker()};
+loader.config({monaco});
+monaco.languages.register({id:'qsc'});
+monaco.languages.setMonarchTokensProvider('qsc',{tokenizer:{root:[[/\/\/.*$/,'comment'],[/\/\*/,'comment','@comment'],[/"([^"\\]|\\.)*"/,'string'],[/\b(if|else|while|for|return|int|float|string|bool|void|true|false)\b/,'keyword'],[/\b\d+(\.\d+)?\b/,'number'],[/[{}()\[\]]/,'delimiter'],[/[a-zA-Z_]\w*/,'identifier']],comment:[[/[^/*]+/,'comment'],[/\*\//,'comment','@pop'],[/[/*]/,'comment']]}});
+monaco.languages.setLanguageConfiguration('qsc',{comments:{lineComment:'//',blockComment:['/*','*/']},brackets:[['{','}'],['(',')'],['[',']']],autoClosingPairs:[{open:'{',close:'}'},{open:'(',close:')'},{open:'[',close:']'},{open:'"',close:'"'}]});
+ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
