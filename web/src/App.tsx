@@ -41,7 +41,7 @@ export default function App(){
     const result=await engine.request(operation,{source,minor});setBusy('');
     if(rev!==revision.current){setMessage('Source or target changed during the operation. Run it again.');return;}
     if(!result.ok){setCompiled(undefined);setError(result.error||'The toolchain rejected this source.');return;}
-    if(operation==='compile'){setCompiled(result.binary);setMessage(`Compiled successfully for IGI ${minor===5?'1':'2'}. Your QVM is ready to download.`);}else setMessage('Validation passed. No source errors found.');
+    if(operation==='compile'){setCompiled(result.binary);setBinary(result.binary);setBinaryName(name.replace(/\.qsc$/i,'.qvm'));setMetadata(result.metadata);setMessage(`Compiled successfully for IGI ${minor===5?'1':'2'}. Your QVM is ready to download.`);}else setMessage('Validation passed. No source errors found.');
   }
   async function decompile(){
     if(!binary||!ready||busy)return;if(dirty&&!confirm('Replace unsaved source changes with the decompiled QVM?'))return;

@@ -7,7 +7,17 @@ export function CodeEditor({source,onChange,theme,wrap,error,onEditor}:{source:s
   useEffect(()=>{
     const model=ref.current?.getModel();if(!model)return;
     const match=error.match(/\b(?:at\s*|line\s*)(\d+)\s*(?::|,\s*(?:column\s*)?)(\d+)/i) || error.match(/\bline\s+(\d+)/i);
-    monaco.editor.setModelMarkers(model,'qvm',error?[{severity:monaco.MarkerSeverity.Error,message:error,startLineNumber:Number(match?.[1]||1),endLineNumber:Number(match?.[1]||1),startColumn:Number(match?.[2]||1),endColumn:Number(match?.[2]||1)+1}]:[]);
+    const line=Math.max(1,Math.min(Number(match?.[1]||1),model.getLineCount()));
+    const byteOffset=Number(match?.[2]||1)-1;
+    let bytes=0,column=1;
+    // The native lexer counts UTF-8 bytes; Monaco columns count UTF-16 code units.
+    for(const character of model.getLineContent(line)){
+      const code=character.codePointAt(0)!;
+      const width=code<=0x7f?1:code<=0x7ff?2:code<=0xffff?3:4;
+      if(bytes+width>byteOffset)break;
+      bytes+=width;column+=character.length;
+    }
+    monaco.editor.setModelMarkers(model,'qvm',error?[{severity:monaco.MarkerSeverity.Error,message:error,startLineNumber:line,endLineNumber:line,startColumn:column,endColumn:column+1}]:[]);
   },[error]);
   return <Editor height="100%" language="qsc" value={source} theme={theme==='light'?'vs':'vs-dark'} onChange={value=>onChange(value||'')} loading={<div className="editor-loading">Loading source editor…</div>} onMount={instance=>{ref.current=instance;onEditor(instance);}} options={{ariaLabel:'QSC source editor',automaticLayout:true,minimap:{enabled:false},fontSize:14,lineHeight:23,fontFamily:'"SFMono-Regular", Consolas, "Liberation Mono", monospace',padding:{top:20,bottom:20},scrollBeyondLastLine:false,wordWrap:wrap?'on':'off',tabSize:4,renderLineHighlight:'line',bracketPairColorization:{enabled:true}}}/>;
 }
