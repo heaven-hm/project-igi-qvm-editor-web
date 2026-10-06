@@ -14,3 +14,8 @@ available in this session, so this repository keeps the actionable records here.
   and compilation; transport timeouts terminate the worker and permit retry.
 - Mobile testing: use matching browser/device profiles, including genuine WebKit
   for iPhone Safari rather than spoofing Safari in Chromium.
+- Opening QVM previously only inspected its header, leaving the source editor
+  empty. The default import option now decompiles it into the editor; users can
+  disable that option for manual inspection.
+- Saving updated QVM now compiles the current source and selected target before
+  downloading. Revision guards prevent downloading a result for superseded edits.

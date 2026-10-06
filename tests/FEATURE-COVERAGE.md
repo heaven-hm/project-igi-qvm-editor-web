@@ -9,6 +9,8 @@ The role-separated tester army uses independent native, browser, corpus and depl
 | Original local game semantics preserved | `build/native/qvm_corpus_semantics "$IGI_GAME_PATH" [additional-paths]` compares opcode values, identifiers, strings, branch edges and CALL targets |
 | Local game browser-WASM roundtrip stability | `IGI_GAME_PATH=/path/to/owned/game npm run test:corpus` |
 | QSC import, editing, validation, save and QVM download/reopen | `edit, validate, compile, download and reopen` browser test, both games |
+| Updated source saved as QSC and freshly compiled QVM | `save updated editor as QSC and QVM` browser tests, both games; saved binary reopened and edits checked |
+| Optional automatic QVM decompilation on import | `automatic QVM decompilation can be disabled and enabled` browser test |
 | Invalid QSC numeric/lexical/syntax errors and excessive nesting | Native tests; browser diagnostics test |
 | Invalid QVM offsets, truncation, opcodes, CALL sizes, references and branches | Native tests and 500 deterministic mutations; browser malformed file test |
 | Themes and persistence, find, word wrap, new document, responsive layout | Browser theme test, desktop and mobile projects |

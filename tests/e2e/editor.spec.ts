@@ -56,6 +56,44 @@ for (const minor of ['5','7']) test(`edit, validate, compile, download and reope
   await page.getByRole('button',{name:'Compile QVM',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Compiled successfully');
 });
+for(const minor of ['5','7'])test(`save updated editor as QSC and QVM IGI ${minor==='5'?'1':'2'}`,async({page})=>{
+  page.on('dialog',dialog=>dialog.accept());
+  await openFile(page,'updated.qsc',Buffer.from(example));
+  await page.getByLabel('Compile target').selectOption(minor);
+  const [originalDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QVM',exact:true}).click()]);
+  const original=await readFile((await originalDownload.path())!);
+  await openFile(page,'updated.qvm',original);
+  await expect(page.getByRole('status')).toContainText('QVM source opened in the editor');
+  await expect(page.getByLabel('Compile target')).toHaveValue(minor);
+  const editor=page.getByRole('textbox',{name:'QSC source editor'});
+  await editor.focus();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.insertText('\nUpdated_Action(9876);');
+  const [qscDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  expect(qscDownload.suggestedFilename()).toBe('updated.qsc');
+  expect(await readFile((await qscDownload.path())!,'utf8')).toContain('Updated_Action(9876);');
+  const [qvmDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QVM',exact:true}).click()]);
+  expect(qvmDownload.suggestedFilename()).toBe('updated.qvm');
+  const updated=await readFile((await qvmDownload.path())!);
+  expect(updated.readUInt32LE(8)).toBe(Number(minor));expect(updated.equals(original)).toBe(false);
+  await openFile(page,'saved.qvm',updated);
+  const [reopened]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  expect(await readFile((await reopened.path())!,'utf8')).toContain('Updated_Action(9876)');
+  await expect(page.getByLabel('Diagnostics').getByRole('alert')).toHaveCount(0);
+});
+test('automatic QVM decompilation can be disabled and enabled',async({page})=>{
+  await openFile(page,'option.qsc',Buffer.from(example));
+  const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QVM',exact:true}).click()]);
+  const bytes=await readFile((await download.path())!);
+  await page.getByLabel('Auto-decompile QVM on open').uncheck();
+  await openFile(page,'manual.qvm',bytes);
+  await expect(page.getByRole('status')).toContainText('Select Decompile to QSC');
+  await page.getByRole('button',{name:'Decompile to QSC'}).click();
+  await expect(page.getByRole('status')).toContainText('QVM decompiled');
+  await page.getByLabel('Auto-decompile QVM on open').check();
+  await openFile(page,'automatic.qvm',bytes);
+  await expect(page.getByRole('status')).toContainText('QVM source opened in the editor');
+  const [saved]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  expect(await readFile((await saved.path())!,'utf8')).toContain('Task_New');
+});
 test('diagnostics, malformed files, compile invalidation and empty source',async ({page})=>{
   page.on('dialog', dialog=>dialog.accept());
   await page.getByRole('button',{name:'Compile QVM',exact:true}).click();
@@ -103,6 +141,9 @@ test('theme persistence, wrap, find, new document and responsive layout',async (
   await page.getByRole('button',{name:'New QSC file'}).click();
   await expect(page.getByRole('status')).toContainText('New QSC document');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+  await expect(page.getByText('QSC workspace',{exact:true})).toHaveCount(0);
+  await expect(page.getByText('Open source tools for the IGI community',{exact:true})).toHaveCount(0);
+  if((page.viewportSize()?.width||0)>760)expect(await page.evaluate(()=>document.documentElement.scrollHeight<=window.innerHeight+1)).toBe(true);
 });
 test('exact saved source bytes, shortcuts, dirty cancellation, undo and redo',async ({page})=>{
   await openFile(page,'exact.qsc',Buffer.from(example));
@@ -110,9 +151,11 @@ test('exact saved source bytes, shortcuts, dirty cancellation, undo and redo',as
   await editor.focus();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.insertText(';');
   await expect(page.getByLabel('Unsaved changes')).toBeVisible();
   await shortcut(page,'z');
+  await expect.poll(async()=>((await page.locator('.view-lines .view-line').last().textContent())||'').replace(/\u00a0/g,' ').trim()).toBe(example.split('\n').at(-1));
   const [undoDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
   expect(await readFile((await undoDownload.path())!,'utf8')).toBe(example);
   await editor.focus();await shortcut(page,'Shift+z');
+  await expect.poll(async()=>((await page.locator('.view-lines .view-line').last().textContent())||'').replace(/\u00a0/g,' ').trim()).toBe(example.split('\n').at(-1)+';');
   await expect(page.getByLabel('Unsaved changes')).toBeVisible();
   const cancel=(dialog:any)=>dialog.dismiss();page.on('dialog',cancel);
   await page.getByRole('button',{name:'New QSC file'}).click();
