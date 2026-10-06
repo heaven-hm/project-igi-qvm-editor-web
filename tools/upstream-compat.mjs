@@ -19,7 +19,7 @@ const fixture = resolve('tests/fixtures/objects.qsc');
 const original = resolve(build, 'original.qvm');
 const current = resolve(build, 'current.qvm');
 run(exe, ['compile', fixture, original]);
-run(resolve('build-native/qvm_native'), ['compile', fixture, current]);
+run(resolve(process.env.QVM_NATIVE || 'build/native/qvm_native'), ['compile', fixture, current]);
 assert.deepEqual(readFileSync(current), readFileSync(original), 'IGI 1 compiler output must match authoritative desktop converter byte-for-byte');
 run(exe, ['decompile', current, resolve(build, 'desktop.qsc')]);
 assert.ok(readFileSync(resolve(build, 'desktop.qsc')).length, 'Desktop converter must decompile the generated binary');
