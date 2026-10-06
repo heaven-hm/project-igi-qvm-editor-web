@@ -9,3 +9,16 @@
 .import-options{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-bottom:0;font-size:12px;color:var(--muted)}.import-options label{display:flex;align-items:center;gap:8px;width:fit-content;cursor:pointer}.import-options input{accent-color:var(--accent)}
 .studio{height:100dvh;min-height:0;display:flex;flex-direction:column;padding:0 16px}.topbar{min-height:64px;flex-shrink:0}.toolbar,.import-options{flex-shrink:0}.workspace{flex:1;height:auto;min-height:0;margin-bottom:12px}.toolbar{margin-top:12px}
 @media(max-width:760px){.studio{height:auto;min-height:100dvh;padding:0 10px}.topbar{min-height:80px}.workspace{flex:none;margin-bottom:10px}.editor-pane{height:max(420px,calc(100dvh - 230px))}}
+.workspace.panel-closed{grid-template-columns:minmax(0,1fr)}
+#right-panel{min-width:0;overflow:auto}#right-panel[hidden]{display:none}
+.document-tabs{display:flex;flex:1;min-width:0;overflow-x:auto;align-self:stretch}
+.document-tab{display:flex;align-items:center;border-right:1px solid var(--border);flex-shrink:0;max-width:240px}
+.document-tab.selected{background:var(--surface);box-shadow:inset 0 2px var(--accent)}
+.document-tab button{background:transparent;color:var(--muted);border:0;cursor:pointer}
+.document-tab.selected button{color:var(--text)}
+.document-tab [role=tab]{padding:12px;display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.document-tab .tab-close{padding:8px}.editor-controls{flex-shrink:0}
+.document-tab button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.monaco-host{position:absolute;inset:0;min-width:0}
+.code-area{position:relative}
+.save-dropdown{position:relative}.save-options{position:absolute;top:calc(100% + 4px);left:0;z-index:30;min-width:180px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:4px;box-shadow:0 8px 20px #0003}.save-options button{display:block;width:100%;text-align:left;padding:10px 12px;background:transparent;border:0;color:var(--text);font-size:12px;border-radius:3px}.save-options button:hover,.save-options button:focus-visible{background:var(--raised)}

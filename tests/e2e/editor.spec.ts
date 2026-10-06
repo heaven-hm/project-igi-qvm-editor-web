@@ -2,9 +2,81 @@ import {test, expect, type Page} from '@playwright/test';
 import {readFile, readdir} from 'node:fs/promises';
 import {join} from 'node:path';
 import {mkdir, writeFile} from 'node:fs/promises';
+async function saveAs(page:Page,format:'qsc'|'qvm'){
+  await page.getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByRole('menuitem',{name:format==='qsc'?'Save script (QSC)':'Save binary (QVM)',exact:true}).click();
+}
+test('single Save dropdown provides both formats and dismisses with Escape and outside click',async({page})=>{
+  await expect(page.getByRole('button',{name:'Save',exact:true})).toHaveCount(1);
+  await expect(page.getByRole('button',{name:'Save QSC',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Save QVM',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Save',exact:true}).click();
+  await expect(page.getByRole('menuitem')).toHaveCount(2);
+  await expect(page.getByRole('menuitem',{name:'Save script (QSC)',exact:true})).toBeVisible();
+  await expect(page.getByRole('menuitem',{name:'Save binary (QVM)',exact:true})).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await page.getByRole('button',{name:'Save',exact:true}).click();
+  await page.getByText('Engine ready',{exact:true}).click();
+  await expect(page.getByRole('menu')).toHaveCount(0);
+});
 const example = 'Task_New(1, "TestObject", "mission", -1, 3.5, FALSE);\na = 2 + 3 * 4;';
+test('right panel toggles full editor width and multiple picker tabs preserve edits and targets',async({page})=>{
+  await page.getByRole('button',{name:'Close right panel'}).click();
+  const wide=(await page.locator('.editor-pane').boundingBox())!.width;
+  await expect(page.locator('#right-panel')).toBeHidden();
+  await page.getByRole('button',{name:'Expand right panel'}).click();
+  await expect(page.locator('#right-panel')).toBeVisible();
+  if((page.viewportSize()?.width||0)>760)expect((await page.locator('.editor-pane').boundingBox())!.width).toBeLessThan(wide);
+  await page.getByLabel('Open QSC or QVM file').setInputFiles([
+    {name:'first.qsc',mimeType:'text/plain',buffer:Buffer.from('Foo(1);')},
+    {name:'second.qsc',mimeType:'text/plain',buffer:Buffer.from('Bar(2);')}
+  ]);
+  await expect(page.getByRole('tab',{name:'second.qsc'})).toHaveAttribute('aria-selected','true');
+  await page.getByLabel('Compile target').selectOption('7');
+  const editor=page.getByRole('textbox',{name:'QSC source editor'});
+  await editor.focus();await shortcut(page,'a');await page.keyboard.press('ArrowRight');await page.keyboard.insertText('\nBaz(3);');
+  await page.getByRole('tab',{name:'first.qsc'}).click();
+  await expect(page.getByLabel('Compile target')).toHaveValue('5');
+  const [first]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
+  expect(await readFile((await first.path())!,'utf8')).toBe('Foo(1);');
+  await page.getByRole('tab',{name:'second.qsc'}).click();
+  await expect(page.getByLabel('Compile target')).toHaveValue('7');
+  await editor.focus();await shortcut(page,'z');
+  await expect(page.locator('.view-lines')).not.toContainText('Baz');
+  await shortcut(page,'Shift+z');
+  await expect(page.locator('.view-lines')).toContainText('Baz');
+  const [second]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qvm')]);
+  expect((await readFile((await second.path())!)).readUInt32LE(8)).toBe(7);
+  const [source]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
+  expect(await readFile((await source.path())!,'utf8')).toBe('Bar(2);\nBaz(3);');
+  await page.getByRole('button',{name:'Close second.qsc'}).click();
+  await expect(page.getByRole('tab',{name:'first.qsc'})).toHaveAttribute('aria-selected','true');
+  await page.getByRole('button',{name:'Close first.qsc'}).click();
+  await expect(page.getByRole('tab',{name:'untitled.qsc'})).toHaveAttribute('aria-selected','true');
+});
 const openFile = (page:Page,name:string,buffer:Buffer) => page.getByLabel('Open QSC or QVM file').setInputFiles({name,mimeType:'application/octet-stream',buffer});
-async function shortcut(page:Page,key:string){const mac=await page.evaluate(()=>/Macintosh|iPhone|iPad/.test(navigator.userAgent));await page.keyboard.press(`${mac?'Meta':'Control'}+${key}`);}
+test('mixed QSC and QVM drop auto-decompiles without changing other tabs',async({page})=>{
+  await openFile(page,'original.qsc',Buffer.from('Foo(42);'));
+  await page.getByLabel('Compile target').selectOption('7');
+  const [binary]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qvm')]);
+  const bytes=Array.from(await readFile((await binary.path())!));
+  await page.locator('.studio').evaluate((element,bytes)=>{
+    const data=new DataTransfer();
+    data.items.add(new File(['Bar(77);'],'dropped-source.qsc'));
+    data.items.add(new File([new Uint8Array(bytes)],'dropped-binary.qvm'));
+    element.dispatchEvent(new DragEvent('drop',{dataTransfer:data,bubbles:true,cancelable:true}));
+  },bytes);
+  await expect(page.getByRole('tab',{name:'dropped-binary.qsc'})).toHaveAttribute('aria-selected','true');
+  await expect(page.getByLabel('Compile target')).toHaveValue('7');
+  await expect(page.locator('.view-lines')).toContainText('Foo');
+  await page.getByRole('tab',{name:'dropped-source.qsc'}).click();
+  const [source]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
+  expect(await readFile((await source.path())!,'utf8')).toBe('Bar(77);');
+  await page.getByRole('tab',{name:'original.qsc'}).click();
+  await expect(page.getByRole('button',{name:'Download compiled QVM'})).toBeEnabled();
+});
+async function shortcut(page:Page,key:string){const mac=await page.evaluate(()=>/Macintosh/.test(navigator.userAgent)||(/iPhone|iPad/.test(navigator.userAgent)&&navigator.maxTouchPoints>0));await page.keyboard.press(`${mac?'Meta':'Control'}+${key}`);}
 test.beforeEach(async ({page,browserName}) => {
   const errors:string[]=[]; const uploads:string[]=[];
   page.on('pageerror', error=>errors.push(error.message));
@@ -14,6 +86,7 @@ test.beforeEach(async ({page,browserName}) => {
   await page.goto('/');
   await expect(page.getByText('Engine ready', {exact:true})).toBeVisible();
   await expect(page.getByRole('textbox', {name:'QSC source editor'})).toBeVisible();
+  await page.getByRole('button',{name:'Expand right panel'}).click();
   (page as any).__errors=errors; (page as any).__uploads=uploads;
 });
 test.afterEach(async ({page,browserName},testInfo)=>{
@@ -47,11 +120,11 @@ for (const minor of ['5','7']) test(`edit, validate, compile, download and reope
   await expect(page.getByRole('status')).toContainText('Detected IGI');
   await page.getByRole('button',{name:'Decompile to QSC'}).click();
   await expect(page.getByRole('status')).toContainText('QVM decompiled');
-  const [sourceDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  const [sourceDownload]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
   const source=await readFile((await sourceDownload.path())!,'utf8');
   expect(source).toContain('Task_New');
   const editor=page.getByRole('textbox',{name:'QSC source editor'});
-  await editor.focus();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.insertText('\nFoo(99);');
+  await editor.focus();await shortcut(page,'a');await page.keyboard.press('ArrowRight');await page.keyboard.insertText('\nFoo(99);');
   await expect(page.getByLabel('Unsaved changes')).toBeVisible();
   await page.getByRole('button',{name:'Compile QVM',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Compiled successfully');
@@ -60,38 +133,33 @@ for(const minor of ['5','7'])test(`save updated editor as QSC and QVM IGI ${mino
   page.on('dialog',dialog=>dialog.accept());
   await openFile(page,'updated.qsc',Buffer.from(example));
   await page.getByLabel('Compile target').selectOption(minor);
-  const [originalDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QVM',exact:true}).click()]);
+  const [originalDownload]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qvm')]);
   const original=await readFile((await originalDownload.path())!);
   await openFile(page,'updated.qvm',original);
   await expect(page.getByRole('status')).toContainText('QVM source opened in the editor');
   await expect(page.getByLabel('Compile target')).toHaveValue(minor);
   const editor=page.getByRole('textbox',{name:'QSC source editor'});
-  await editor.focus();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.insertText('\nUpdated_Action(9876);');
-  const [qscDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  await editor.focus();await shortcut(page,'a');await page.keyboard.press('ArrowRight');await page.keyboard.insertText('\nUpdated_Action(9876);');
+  const [qscDownload]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
   expect(qscDownload.suggestedFilename()).toBe('updated.qsc');
   expect(await readFile((await qscDownload.path())!,'utf8')).toContain('Updated_Action(9876);');
-  const [qvmDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QVM',exact:true}).click()]);
+  const [qvmDownload]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qvm')]);
   expect(qvmDownload.suggestedFilename()).toBe('updated.qvm');
   const updated=await readFile((await qvmDownload.path())!);
   expect(updated.readUInt32LE(8)).toBe(Number(minor));expect(updated.equals(original)).toBe(false);
   await openFile(page,'saved.qvm',updated);
-  const [reopened]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  const [reopened]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
   expect(await readFile((await reopened.path())!,'utf8')).toContain('Updated_Action(9876)');
   await expect(page.getByLabel('Diagnostics').getByRole('alert')).toHaveCount(0);
 });
-test('automatic QVM decompilation can be disabled and enabled',async({page})=>{
+test('automatic QVM decompilation is always enabled without a checkbox',async({page})=>{
   await openFile(page,'option.qsc',Buffer.from(example));
-  const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QVM',exact:true}).click()]);
+  const [download]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qvm')]);
   const bytes=await readFile((await download.path())!);
-  await page.getByLabel('Auto-decompile QVM on open').uncheck();
-  await openFile(page,'manual.qvm',bytes);
-  await expect(page.getByRole('status')).toContainText('Select Decompile to QSC');
-  await page.getByRole('button',{name:'Decompile to QSC'}).click();
-  await expect(page.getByRole('status')).toContainText('QVM decompiled');
-  await page.getByLabel('Auto-decompile QVM on open').check();
+  await expect(page.getByLabel('Auto-decompile QVM on open')).toHaveCount(0);
   await openFile(page,'automatic.qvm',bytes);
   await expect(page.getByRole('status')).toContainText('QVM source opened in the editor');
-  const [saved]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  const [saved]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
   expect(await readFile((await saved.path())!,'utf8')).toContain('Task_New');
 });
 test('diagnostics, malformed files, compile invalidation and empty source',async ({page})=>{
@@ -120,7 +188,7 @@ test('Unicode diagnostic underline matches the offending character and clears af
   });
   expect(offending).toBeTruthy();const bounds=await marker.boundingBox();expect(bounds).toBeTruthy();
   expect(Math.abs(bounds!.x-offending!.x)).toBeLessThan(3);
-  const editor=page.getByRole('textbox',{name:'QSC source editor'});await editor.focus();await page.keyboard.press('ControlOrMeta+a');await page.keyboard.insertText('Foo(1);');
+  const editor=page.getByRole('textbox',{name:'QSC source editor'});await editor.focus();await shortcut(page,'a');await page.keyboard.insertText('Foo(1);');
   await expect(page.locator('.squiggly-error')).toHaveCount(0);
 });
 test('theme persistence, wrap, find, new document and responsive layout',async ({page})=>{
@@ -136,7 +204,8 @@ test('theme persistence, wrap, find, new document and responsive layout',async (
   await page.getByRole('button',{name:'Find in source'}).click();
   await expect(page.locator('.find-widget')).toBeVisible();
   await page.getByRole('textbox',{name:'Find',exact:true}).fill('Task_New');
-  await expect(page.locator('.currentFindMatch')).toBeVisible();
+  await expect(page.locator('.find-widget .matchesCount')).toHaveText('1 of 1');
+  await expect(page.locator('.findMatch').first()).toBeVisible();
   await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'New QSC file'}).click();
   await expect(page.getByRole('status')).toContainText('New QSC document');
@@ -148,19 +217,17 @@ test('theme persistence, wrap, find, new document and responsive layout',async (
 test('exact saved source bytes, shortcuts, dirty cancellation, undo and redo',async ({page})=>{
   await openFile(page,'exact.qsc',Buffer.from(example));
   const editor=page.getByRole('textbox',{name:'QSC source editor'});
-  await editor.focus();await page.keyboard.press('ControlOrMeta+End');await page.keyboard.insertText(';');
+  await editor.focus();await shortcut(page,'a');await page.keyboard.press('ArrowRight');await page.keyboard.insertText(';');
   await expect(page.getByLabel('Unsaved changes')).toBeVisible();
   await shortcut(page,'z');
   await expect.poll(async()=>((await page.locator('.view-lines .view-line').last().textContent())||'').replace(/\u00a0/g,' ').trim()).toBe(example.split('\n').at(-1));
-  const [undoDownload]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  const [undoDownload]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
   expect(await readFile((await undoDownload.path())!,'utf8')).toBe(example);
   await editor.focus();await shortcut(page,'Shift+z');
   await expect.poll(async()=>((await page.locator('.view-lines .view-line').last().textContent())||'').replace(/\u00a0/g,' ').trim()).toBe(example.split('\n').at(-1)+';');
   await expect(page.getByLabel('Unsaved changes')).toBeVisible();
   const cancel=(dialog:any)=>dialog.dismiss();page.on('dialog',cancel);
-  await page.getByRole('button',{name:'New QSC file'}).click();
-  await expect(page.getByLabel('Unsaved changes')).toBeVisible();
-  await openFile(page,'replacement.qsc',Buffer.from('Bar(2);'));
+  await page.getByRole('button',{name:'Close exact.qsc'}).click();
   await expect(page.getByLabel('Unsaved changes')).toBeVisible();
   await page.getByRole('button',{name:'Compile QVM',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Compiled successfully');
@@ -175,7 +242,7 @@ test('exact saved source bytes, shortcuts, dirty cancellation, undo and redo',as
   await chooser.setFiles({name:'shortcut.qsc',mimeType:'text/plain',buffer:Buffer.from('Foo(1);')});
   await expect(page.getByRole('status')).toContainText('Opened shortcut.qsc');
 });
-test('multifile drop rejected and all themes change actual background colors',async ({page})=>{
+test('multifile drop opens independent tabs and all themes change actual background colors',async ({page})=>{
   const colors:string[]=[],editorColors:string[]=[];
   const backgrounds:Record<string,string>={dark:'rgb(30, 30, 30)',light:'rgb(255, 255, 254)',midnight:'rgb(16, 24, 39)'};
   for(const theme of ['dark','light','midnight']){
@@ -188,14 +255,20 @@ test('multifile drop rejected and all themes change actual background colors',as
   expect(new Set(colors).size).toBe(3);
   expect(new Set(editorColors).size).toBe(3);
   await page.locator('.studio').evaluate(element=>{const data=new DataTransfer();data.items.add(new File(['Foo();'],'one.qsc'));data.items.add(new File(['Bar();'],'two.qsc'));element.dispatchEvent(new DragEvent('drop',{dataTransfer:data,bubbles:true,cancelable:true}));});
-  await expect(page.getByLabel('Diagnostics').getByRole('alert')).toContainText('one QSC or QVM file at a time');
+  await expect(page.getByRole('tab',{name:'two.qsc'})).toHaveAttribute('aria-selected','true');
+  for(const [name,source] of [['one.qsc','Foo();'],['two.qsc','Bar();']]){
+    await page.getByRole('tab',{name,exact:true}).click();
+    const [saved]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
+    expect(saved.suggestedFilename()).toBe(name);
+    expect(await readFile((await saved.path())!,'utf8')).toBe(source);
+  }
 });
 test('CRLF documents keep exact line endings through save and edits',async ({page})=>{
   const original='Foo(1);\r\nBar(2);\r\n';await openFile(page,'windows.qsc',Buffer.from(original));
-  const [first]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  const [first]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
   expect(await readFile((await first.path())!,'utf8')).toBe(original);
-  const editor=page.getByRole('textbox',{name:'QSC source editor'});await editor.focus();await shortcut(page,'End');await page.keyboard.insertText('Baz(3);');
-  const [second]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  const editor=page.getByRole('textbox',{name:'QSC source editor'});await editor.focus();await shortcut(page,'a');await page.keyboard.press('ArrowRight');await page.keyboard.insertText('Baz(3);');
+  const [second]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
   expect(await readFile((await second.path())!,'utf8')).toBe(original+'Baz(3);');
 });
 test('worker failure exposes retry and recovers when resource becomes available',async ({page})=>{
@@ -210,13 +283,17 @@ test('worker failure exposes retry and recovers when resource becomes available'
 });
 test('editing while an asynchronous file read runs preserves newer source',async ({page})=>{
   await openFile(page,'current.qsc',Buffer.from('Foo(1);'));
-  // Delay the browser File API rather than introducing any production test hook.
-  await page.evaluate(()=>{const original=File.prototype.text;File.prototype.text=async function(){await new Promise(resolve=>setTimeout(resolve,700));return original.call(this);};});
+  await expect(page.getByRole('status')).toContainText('Opened current.qsc');
+  // Gate the browser File API so the race does not depend on machine speed.
+  await page.evaluate(()=>{const original=File.prototype.text;File.prototype.text=async function(){await new Promise<void>(resolve=>{(window as any).__releaseRead=resolve;});return original.call(this);};});
   await openFile(page,'stale.qsc',Buffer.from('Bar(2);'));
+  await expect.poll(()=>page.evaluate(()=>typeof (window as any).__releaseRead)).toBe('function');
   const editor=page.getByRole('textbox',{name:'QSC source editor'});await editor.focus();
-  await page.keyboard.press('ControlOrMeta+End');await page.keyboard.insertText('\nBaz(3);');
+  await shortcut(page,'a');await page.keyboard.press('ArrowRight');await page.keyboard.insertText('\nBaz(3);');
+  await expect(page.getByRole('status')).toContainText('Source changed');
+  await page.evaluate(()=>(window as any).__releaseRead());
   await expect(page.getByRole('status')).toContainText('File open cancelled because the source changed');
-  const [saved]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QSC',exact:true}).click()]);
+  const [saved]=await Promise.all([page.waitForEvent('download'),saveAs(page,'qsc')]);
   expect(await readFile((await saved.path())!,'utf8')).toBe('Foo(1);\nBaz(3);');
 });
 test('editing during a delayed worker compile discards stale output',async ({page})=>{
