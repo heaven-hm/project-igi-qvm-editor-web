@@ -23,3 +23,7 @@ available in this session, so this repository keeps the actionable records here.
   dirty tab asks for confirmation and closed models are disposed.
 - QVM-WEB-002: the fixed inspector consumed editor space. It now starts collapsed
   and its accessible toggle restores the full editor width.
+- QVM-WEB-003: automatic occurrence highlighting left cancellation errors during
+  rapid model switching. Disable that optional background highlight task; syntax
+  highlighting and explicit Find remain enabled. Browser tests still fail on any
+  uncaught error and verify switching, closing, undo and redo.

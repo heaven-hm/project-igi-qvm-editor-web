@@ -37,15 +37,19 @@ automatic decompilation, mixed multi-file drag/drop, independent tabs and undo
 history, the collapsible right panel, full-viewport layout, diagnostics,
 failure/retry and deterministic stale-operation guards.
 
-The original 56-case static run measured 40.32% V8 executed byte ranges in the
-production bundle, including Monaco dependencies. This is a different metric
+The current static run measured 40.66% V8 executed byte ranges in the production
+bundle, including Monaco dependencies. This is a different metric
 from application source coverage and is not a claim of 100% coverage.
 
-The first deployment run completed 50/56 cases; six navigation timeouts and an
-anonymous HTTP 302 to Vercel SSO prevented a clean production result. The Vercel
-project was subsequently renamed to `igi-qvm-editor` so the requested address
-can become the canonical production domain. Final deployment results are recorded
-after verification of that address.
+The production site is publicly available at https://igi-qvm-editor.vercel.app.
+Deployment `dpl_8Ye8JMvytALhJ6sYYqg7Vb2T7WK3` serves the verified static build.
+The live 80-case run passed 78 cases initially; two Chromium cases timed out
+while navigating or loading the engine, before exercising the editor. Both passed
+on a separate one-worker rerun (2/2). All 80 feature scenarios were therefore
+verified live, but this is not a claim of a clean first-pass production run.
+Reports are archived locally as `save-tabs-production` and
+`save-tabs-production-recheck`; the clean localhost run is
+`save-tabs-final-local`.
 
 ## Independent review
 
