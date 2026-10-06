@@ -1,6 +1,6 @@
 # Release verification
 
-Verification date: 2026-10-06. These are measured results, not a claim that every
+Verification date: 2026-10-07. These are measured results, not a claim that every
 possible game program or every source branch has been exercised.
 
 ## Engine and private corpus
@@ -29,8 +29,21 @@ function** coverage of the extracted native core after unit and corpus checks.
 Reports are generated under `build/coverage/` and remain local. This is below
 100%; passing every feature scenario does not change that measurement.
 
-Browser results and their separate V8 byte-range metric are recorded after the
-final local-static and deployed-site runs. See the feature traceability matrix.
+The updated static build passed **68/68 Playwright cases on localhost**, with no
+skipped or flaky cases, across desktop Chromium, desktop WebKit, Pixel 7 Chromium
+and iPhone WebKit. The cases include uploaded QSC/QVM files, edited-source saving
+in both formats, reopening the edited binary, optional automatic decompilation,
+the full-viewport layout, diagnostics, failure/retry and stale-operation guards.
+
+The original 56-case static run measured 40.32% V8 executed byte ranges in the
+production bundle, including Monaco dependencies. This is a different metric
+from application source coverage and is not a claim of 100% coverage.
+
+The first deployment run completed 50/56 cases; six navigation timeouts and an
+anonymous HTTP 302 to Vercel SSO prevented a clean production result. The Vercel
+project was subsequently renamed to `igi-qvm-editor` so the requested address
+can become the canonical production domain. Final deployment results are recorded
+after verification of that address.
 
 ## Independent review
 

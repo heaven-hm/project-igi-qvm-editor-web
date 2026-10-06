@@ -1,4 +1,8 @@
-# Project IGI QVM Editor Online
+# Project IGI QVM Editor Web
+
+[Open the web editor](https://igi-qvm-editor.vercel.app) · [GitHub repository](https://github.com/heaven-hm/project-igi-qvm-editor-web)
+
+![Main editor workspace](docs/screenshots/editor.png)
 
 A focused browser editor, compiler and decompiler for Project IGI 1 and 2.
 Open `.qsc` source or `.qvm` bytecode, edit QSC in Monaco, choose a target game,
@@ -15,6 +19,10 @@ The application executes the compiler and decompiler, never the game scripts.
 - Monaco syntax highlighting, error markers, find, word wrap, undo and redo.
 - Dark, Light and Midnight themes; theme preference stays in local browser storage.
 - File picker, drag/drop, QSC save and QVM download with base filenames retained.
+- Separate **Save QSC** and **Save QVM** actions for the current editor contents.
+  Save QVM compiles the latest edits for the selected game before downloading.
+- **Auto-decompile QVM on open** is enabled by default and can be switched off
+  for inspecting a binary before manually decompiling it.
 - Detailed lexer/parser diagnostics and QVM instruction/table metadata.
 - Responsive desktop workspace and mobile layout.
 - Native C++ compiled to WebAssembly in a Web Worker, keeping the editor responsive.
@@ -130,7 +138,7 @@ For Vercel, use a current CLI (47.2.2 or later):
 
 ```sh
 npm run build
-vercel link --yes --project project-igi-qvm-editor-online
+vercel link --yes --project igi-qvm-editor
 npm run deploy:prepare
 vercel deploy --prebuilt --prod
 E2E_BASE_URL=https://your-production-url npm run test:e2e
@@ -150,6 +158,23 @@ login or environment; credentials must never be placed in source files or assets
   the reference compiler's empty metadata output. The tested 8.7 samples have none.
 - Testing validates binary and script semantics; it does not execute the game or
   prove behavior for every native function in every game release.
+
+## Screenshots
+
+Compiled QVM with detected format and instruction details:
+
+![QVM compilation](docs/screenshots/compiled-qvm.png)
+
+QVM decompiled back into editable QSC:
+
+![QVM decompilation](docs/screenshots/decompiled-qsc.png)
+
+These screenshots use the MIT-licensed public objects fixture. Recreate them
+from a local static preview:
+
+```sh
+SCREENSHOT_BASE_URL=http://localhost:4176 node tools/capture-screenshots.mjs
+```
 
 ## Credits and license
 
