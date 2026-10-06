@@ -19,10 +19,13 @@ The application executes the compiler and decompiler, never the game scripts.
 - Monaco syntax highlighting, error markers, find, word wrap, undo and redo.
 - Dark, Light and Midnight themes; theme preference stays in local browser storage.
 - File picker, drag/drop, QSC save and QVM download with base filenames retained.
-- Separate **Save QSC** and **Save QVM** actions for the current editor contents.
-  Save QVM compiles the latest edits for the selected game before downloading.
-- **Auto-decompile QVM on open** is enabled by default and can be switched off
-  for inspecting a binary before manually decompiling it.
+- One **Save** dropdown offers **Save script (QSC)** and **Save binary (QVM)**.
+  Binary saving compiles the latest edits for the selected game before downloading.
+- QVM files automatically decompile into editable QSC when opened.
+- Open or drop multiple QSC/QVM files into separate tabs (up to 20).
+  Each tab retains its own source, undo history, target game and compiled binary.
+- The right inspector starts collapsed; toggle it to inspect metadata or reclaim
+  the full editor width.
 - Detailed lexer/parser diagnostics and QVM instruction/table metadata.
 - Responsive desktop workspace and mobile layout.
 - Native C++ compiled to WebAssembly in a Web Worker, keeping the editor responsive.

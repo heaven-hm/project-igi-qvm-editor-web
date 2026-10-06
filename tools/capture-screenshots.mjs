@@ -5,15 +5,17 @@ try{
   const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
   await page.goto(process.env.SCREENSHOT_BASE_URL||'http://127.0.0.1:4176/');
   await page.getByText('Engine ready',{exact:true}).waitFor();
+  async function saveAs(format){await page.getByRole('button',{name:'Save',exact:true}).click();await page.getByRole('menuitem',{name:format==='qsc'?'Save script (QSC)':'Save binary (QVM)',exact:true}).click();}
   const screenshots=new URL('../docs/screenshots/',import.meta.url);
   await mkdir(screenshots,{recursive:true});
   await page.getByLabel('Open QSC or QVM file').setInputFiles(new URL('../tests/fixtures/objects.qsc',import.meta.url).pathname);
   await page.getByRole('status').filter({hasText:'Opened objects.qsc'}).waitFor();
   await page.screenshot({path:new URL('editor.png',screenshots).pathname,fullPage:true});
+  await page.getByRole('button',{name:'Expand right panel'}).click();
   await page.getByRole('button',{name:'Compile QVM',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Compiled successfully'}).waitFor();
   await page.screenshot({path:new URL('compiled-qvm.png',screenshots).pathname,fullPage:true});
-  const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Save QVM',exact:true}).click()]);
+  const [download]=await Promise.all([page.waitForEvent('download'),saveAs('qvm')]);
   const bytes=await readFile(await download.path());
   await page.getByLabel('Open QSC or QVM file').setInputFiles({name:'objects.qvm',mimeType:'application/octet-stream',buffer:bytes});
   await page.getByRole('status').filter({hasText:'QVM source opened in the editor'}).waitFor();

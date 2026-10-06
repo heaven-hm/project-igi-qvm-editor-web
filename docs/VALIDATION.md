@@ -29,11 +29,13 @@ function** coverage of the extracted native core after unit and corpus checks.
 Reports are generated under `build/coverage/` and remain local. This is below
 100%; passing every feature scenario does not change that measurement.
 
-The updated static build passed **68/68 Playwright cases on localhost**, with no
+The updated static build passed **80/80 Playwright cases on localhost**, with no
 skipped or flaky cases, across desktop Chromium, desktop WebKit, Pixel 7 Chromium
 and iPhone WebKit. The cases include uploaded QSC/QVM files, edited-source saving
-in both formats, reopening the edited binary, optional automatic decompilation,
-the full-viewport layout, diagnostics, failure/retry and stale-operation guards.
+in both formats through the single Save dropdown, reopening the edited binary,
+automatic decompilation, mixed multi-file drag/drop, independent tabs and undo
+history, the collapsible right panel, full-viewport layout, diagnostics,
+failure/retry and deterministic stale-operation guards.
 
 The original 56-case static run measured 40.32% V8 executed byte ranges in the
 production bundle, including Monaco dependencies. This is a different metric
