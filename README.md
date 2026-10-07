@@ -177,6 +177,20 @@ from a local static preview:
 
 ## Credits and license
 
-MIT, © Heaven-HM. This project builds on the Project IGI reverse-engineering work
+Heaven-HM Community Modding License, © Heaven-HM. This project builds on the Project IGI reverse-engineering work
 in Project IGI Converter. The original archived editor credits
 **Artiom** for compiler/tools and game assets are not redistributed.
+
+## License and responsible use
+
+This project's Heaven-HM-owned material uses the
+[Heaven-HM Community Modding License](LICENSE). You may modify the
+source and create and share free, lawful, noncommercial mods. Selling the
+covered software or resulting mods, or charging for access, requires separate
+written permission. Illegal activity, infringement, malware, unauthorized
+access, and intentional real-world harm are prohibited. Preserve attribution
+and follow third-party licenses. Fictional events in games are not real-world harm.
+
+This is a **source-available** project under a custom restrictive license.
+[Prior permissions and separately licensed material](LICENSE_SCOPE.md) remain
+valid; this change does not revoke rights granted for earlier versions.
